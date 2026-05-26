@@ -1,5 +1,9 @@
 # Repository Guidelines
 
+## Rule
+
+Each Time i call you to add new feather or fix bugs, When you finish This task, you must get me a commit info, Help me to add the commit -m "" messages, if is a small feather of bug, you only write a title, if is a Big feather or Big Bugs, You Need to get me a commit title, and the detail commit comment, And you need to use the Chinese Commit info
+
 ## Project Structure & Module Organization
 
 LifeOS Focus is a local Python desktop/web app. `desktop/main.py` starts the Flask API, background monitor, and desktop UI. Backend code lives in `backend/`: `app.py` defines API routes, `db.py` manages SQLite/settings paths, `monitor.py` tracks activity, and calendar integrations live in `calendar_google.py` and `calendar_outlook.py`. Desktop shell code lives in `desktop/ui/` for the pywebview/customtkinter shell, while browser assets live in `web/` (`index.html`, `app.js`, `styles.css`). Tests are in `tests/`. Runtime state is stored under `data/` and `config/`; avoid committing personal database or settings changes unless intentional.

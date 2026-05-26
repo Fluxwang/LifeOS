@@ -15,6 +15,22 @@ if DEPS_DIR.exists():
 API_URL = "http://127.0.0.1:5000"
 
 
+class DesktopApi:
+    def open_settings(self) -> bool:
+        import webview  # type: ignore
+
+        webview.create_window(
+            "LifeOS Focus 设置",
+            f"{API_URL}/settings",
+            width=820,
+            height=720,
+            min_size=(680, 560),
+            resizable=True,
+            background_color="#1f1f2f",
+        )
+        return True
+
+
 def fetch_health() -> dict:
     try:
         with urllib.request.urlopen(f"{API_URL}/health", timeout=1.5) as resp:
@@ -38,10 +54,12 @@ def run() -> None:
         webview.create_window(
             "LifeOS Focus",
             f"{API_URL}/dashboard",
-            width=1200,
-            height=800,
-            min_size=(900, 640),
-            background_color="#111111",
+            width=540,
+            height=735,
+            min_size=(420, 560),
+            resizable=True,
+            background_color="#1f1f2f",
+            js_api=DesktopApi(),
         )
         webview.start()
         return
@@ -60,7 +78,7 @@ def run() -> None:
         app = ctk.CTk()
         app.title("LifeOS")
         app.geometry("420x260")
-        app.resizable(False, False)
+        app.resizable(True, True)
     except Exception as exc:
         print(f"CustomTkinter could not start: {exc}")
         run_browser_fallback()
