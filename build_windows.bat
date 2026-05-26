@@ -1,11 +1,15 @@
 @echo off
 setlocal
 
-where python >nul 2>nul
-if errorlevel 1 (
-  set PYTHON=py -3
+if exist ".venv\Scripts\python.exe" (
+  set "PYTHON=.venv\Scripts\python.exe"
 ) else (
-  set PYTHON=python
+  where python >nul 2>nul
+  if errorlevel 1 (
+    set "PYTHON=py -3"
+  ) else (
+    set "PYTHON=python"
+  )
 )
 
 %PYTHON% -m pip install -r requirements.txt
