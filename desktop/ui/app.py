@@ -38,10 +38,11 @@ def run() -> None:
         webview.create_window(
             "LifeOS Focus",
             f"{API_URL}/dashboard",
-            width=1200,
-            height=800,
-            min_size=(900, 640),
-            background_color="#111111",
+            width=540,
+            height=735,
+            min_size=(540, 735),
+            resizable=False,
+            background_color="#1f1f2f",
         )
         webview.start()
         return
