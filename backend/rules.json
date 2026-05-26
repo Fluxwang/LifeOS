@@ -1,0 +1,53 @@
+{
+  "rules": [
+    {
+      "process": "code.exe",
+      "category": "编程"
+    },
+    {
+      "process": "cursor.exe",
+      "category": "编程"
+    },
+    {
+      "process": "pycharm64.exe",
+      "category": "编程"
+    },
+    {
+      "domain": "github.com",
+      "category": "编程"
+    },
+    {
+      "domain": "claude.ai",
+      "category": "学习"
+    },
+    {
+      "domain": "youtube.com",
+      "category": "娱乐"
+    },
+    {
+      "domain": "bilibili.com",
+      "category": "娱乐"
+    },
+    {
+      "domain": "twitter.com",
+      "category": "娱乐"
+    },
+    {
+      "domain": "x.com",
+      "category": "娱乐"
+    },
+    {
+      "process": "WINWORD.EXE",
+      "category": "工作"
+    },
+    {
+      "process": "EXCEL.EXE",
+      "category": "工作"
+    },
+    {
+      "title_contains": "- 游戏",
+      "category": "游戏"
+    }
+  ],
+  "default": "其他"
+}

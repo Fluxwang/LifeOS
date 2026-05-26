@@ -1,0 +1,112 @@
+# Byte-compiled / optimized Python files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions / compiled Python artifacts
+*.so
+*.pyd
+*.dll
+
+# Virtual environments and locally vendored dependencies
+.venv/
+venv/
+env/
+ENV/
+.deps/
+
+# Python packaging / build output
+build/
+dist/
+downloads/
+eggs/
+.eggs/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller output
+*.manifest
+*.spec.bak
+
+# Test, lint, type-check, and coverage caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.tox/
+.nox/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# Flask / Python runtime logs
+*.log
+logs/
+instance/
+
+# LifeOS local runtime data
+data/
+!data/.gitkeep
+
+# LifeOS local settings and generated config
+config/settings.json
+config/rules.json
+config/*_token.json
+config/*_tokens.json
+config/*_credentials.json
+config/*_secret.json
+config/*_secrets.json
+config/*_auth_flow.json
+config/calendar_credentials.json
+config/*.local.json
+
+# Keep safe example configuration files in git
+!config/*.example.json
+
+# OAuth / credential files that may be downloaded from providers
+client_secret*.json
+credentials.json
+token.json
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# Environment variables and local overrides
+.env
+.env.*
+!.env.example
+
+# Desktop app and OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+*.lnk
+*:Zone.Identifier
+
+# Editor / IDE state
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Local assistant / automation state
+.agents/
+.codex/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
