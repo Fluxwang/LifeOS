@@ -4,7 +4,6 @@ from PyInstaller.utils.hooks import collect_submodules
 
 
 datas = [
-    ("LifeOS Focus.html", "."),
     ("web", "web"),
     ("backend/rules.json", "backend"),
 ]
