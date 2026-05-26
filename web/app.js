@@ -72,6 +72,34 @@
     }, 50);
   }
 
+  function getDesktopApi() {
+    return window.pywebview && window.pywebview.api ? window.pywebview.api : null;
+  }
+
+  function waitForDesktopApi(timeoutMs) {
+    const api = getDesktopApi();
+    if (api) return Promise.resolve(api);
+
+    return new Promise((resolve) => {
+      let settled = false;
+      const timeout = window.setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        window.removeEventListener("pywebviewready", onReady);
+        resolve(null);
+      }, timeoutMs);
+
+      function onReady() {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timeout);
+        resolve(getDesktopApi());
+      }
+
+      window.addEventListener("pywebviewready", onReady, { once: true });
+    });
+  }
+
   function App() {
     const [settings, setSettings] = React.useState(null);
     const [stats, setStats] = React.useState(null);
@@ -185,7 +213,7 @@
     }
 
     async function openSettingsWindow() {
-      const desktopApi = window.pywebview && window.pywebview.api;
+      const desktopApi = await waitForDesktopApi(1200);
       if (desktopApi && typeof desktopApi.open_settings === "function") {
         try {
           await desktopApi.open_settings();
@@ -195,16 +223,7 @@
         }
       }
 
-      const popup = window.open(
-        SETTINGS_PATH,
-        "lifeos-settings",
-        "width=860,height=760,menubar=no,toolbar=no,location=no,status=no"
-      );
-      if (popup) {
-        popup.focus();
-      } else {
-        setSettingsOpen(true);
-      }
+      setSettingsOpen(true);
     }
 
     function resetTimer(nextMode) {
