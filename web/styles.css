@@ -79,6 +79,12 @@ select {
   text-align: center;
 }
 
+.settings-page {
+  place-items: center;
+  padding: 18px;
+  background: var(--shell-2);
+}
+
 .loading-card {
   display: grid;
   gap: 8px;
@@ -384,6 +390,12 @@ select {
   display: grid;
   grid-template-rows: auto 1fr auto;
   overflow: hidden;
+}
+
+.settings-window {
+  width: min(900px, calc(100vw - 36px));
+  height: min(760px, calc(100vh - 36px));
+  max-height: none;
 }
 
 .modal-header {

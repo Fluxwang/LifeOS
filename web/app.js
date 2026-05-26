@@ -1,6 +1,7 @@
 (function () {
   const h = React.createElement;
   const API = "";
+  const SETTINGS_PATH = "/settings";
 
   const CATEGORIES = ["编程", "学习", "工作", "娱乐", "游戏", "其他"];
   const MODE_META = {
@@ -45,6 +46,32 @@
     return res.json();
   }
 
+  function isSettingsPage() {
+    return window.location.pathname.replace(/\/+$/, "") === SETTINGS_PATH;
+  }
+
+  function notifySettingsUpdated() {
+    try {
+      window.localStorage.setItem("lifeos-settings-updated", String(Date.now()));
+    } catch (_) {
+      // localStorage can be unavailable in some embedded webview modes.
+    }
+    try {
+      if (window.opener && !window.opener.closed) {
+        window.opener.postMessage({ type: "lifeos-settings-updated" }, window.location.origin);
+      }
+    } catch (_) {
+      // Cross-window messaging is best-effort.
+    }
+  }
+
+  function closeSettingsPage() {
+    window.close();
+    window.setTimeout(() => {
+      if (!window.closed) window.location.href = "/dashboard";
+    }, 50);
+  }
+
   function App() {
     const [settings, setSettings] = React.useState(null);
     const [stats, setStats] = React.useState(null);
@@ -68,6 +95,27 @@
       refreshAll();
       const id = setInterval(refreshActivity, 5000);
       return () => clearInterval(id);
+    }, []);
+
+    React.useEffect(() => {
+      if (isSettingsPage()) return undefined;
+
+      function refreshFromSettingsWindow(event) {
+        if (!event || event.key === "lifeos-settings-updated") refreshAll();
+      }
+
+      function refreshFromMessage(event) {
+        if (event.data && event.data.type === "lifeos-settings-updated") refreshAll();
+      }
+
+      window.addEventListener("focus", refreshAll);
+      window.addEventListener("storage", refreshFromSettingsWindow);
+      window.addEventListener("message", refreshFromMessage);
+      return () => {
+        window.removeEventListener("focus", refreshAll);
+        window.removeEventListener("storage", refreshFromSettingsWindow);
+        window.removeEventListener("message", refreshFromMessage);
+      };
     }, []);
 
     React.useEffect(() => {
@@ -134,6 +182,29 @@
 
     function ask(options) {
       setConfirm(options);
+    }
+
+    async function openSettingsWindow() {
+      const desktopApi = window.pywebview && window.pywebview.api;
+      if (desktopApi && typeof desktopApi.open_settings === "function") {
+        try {
+          await desktopApi.open_settings();
+          return;
+        } catch (err) {
+          showToast(err.message || String(err), "danger");
+        }
+      }
+
+      const popup = window.open(
+        SETTINGS_PATH,
+        "lifeos-settings",
+        "width=860,height=760,menubar=no,toolbar=no,location=no,status=no"
+      );
+      if (popup) {
+        popup.focus();
+      } else {
+        setSettingsOpen(true);
+      }
     }
 
     function resetTimer(nextMode) {
@@ -260,6 +331,30 @@
     const stateLabel = stateText(mode, running, paused, settings, activity);
     const monitorText = monitorStatusText(settings, activity);
 
+    if (isSettingsPage()) {
+      return h(
+        "main",
+        { className: "app settings-page" },
+        h(SettingsModal, {
+          open: true,
+          standalone: true,
+          onClose: closeSettingsPage,
+          tab: settingsTab,
+          setTab: setSettingsTab,
+          settings,
+          setSettings,
+          stats,
+          rules,
+          calendar,
+          refreshRules,
+          refreshCalendar,
+          patchSettings,
+          showToast,
+        }),
+        h(ToastStack, { toasts })
+      );
+    }
+
     return h(
       "main",
       { className: "app", style: { "--accent": meta.accent, "--progress": `${progress}%` } },
@@ -274,7 +369,7 @@
             "div",
             { className: "window-tools" },
             h("button", { className: "icon-button", title: "刷新", onClick: refreshAll }, "↻"),
-            h("button", { className: "icon-button", title: "设置", onClick: () => setSettingsOpen(true) }, "⚙")
+            h("button", { className: "icon-button", title: "设置", onClick: openSettingsWindow }, "⚙")
           )
         ),
         h(
@@ -359,6 +454,7 @@
   function SettingsModal(props) {
     const {
       open,
+      standalone,
       onClose,
       tab,
       setTab,
@@ -392,6 +488,7 @@
         const sanitized = sanitizeSettings(draft);
         const next = await patchSettings(sanitized, "设置已保存");
         setDraft(next);
+        notifySettingsUpdated();
       } finally {
         setSaving(false);
       }
@@ -402,6 +499,7 @@
       const next = await patchSettings({ monitor_enabled: nextEnabled }, nextEnabled ? "监听已开启" : "监听已关闭");
       setSettings(next);
       setDraft(next);
+      notifySettingsUpdated();
     }
 
     async function connectCalendar(provider) {
@@ -460,32 +558,34 @@
       }
     }
 
-    return h(
-      "div",
-      { className: "modal-backdrop", role: "presentation", onMouseDown: (e) => e.target === e.currentTarget && onClose() },
+    const settingsPanel = h(
+      "section",
+      {
+        className: `settings-modal ${standalone ? "settings-window" : ""}`,
+        role: standalone ? "region" : "dialog",
+        "aria-modal": standalone ? undefined : "true",
+        "aria-label": "设置",
+      },
       h(
-        "section",
-        { className: "settings-modal", role: "dialog", "aria-modal": "true", "aria-label": "设置" },
+        "header",
+        { className: "modal-header" },
+        h("div", null, h("h2", null, "设置"), h("p", null, "LifeOS Focus")),
+        h("button", { className: "icon-button", title: "关闭", onClick: onClose }, "×")
+      ),
+      h(
+        "div",
+        { className: "settings-body" },
         h(
-          "header",
-          { className: "modal-header" },
-          h("div", null, h("h2", null, "设置"), h("p", null, "LifeOS Focus")),
-          h("button", { className: "icon-button", title: "关闭", onClick: onClose }, "×")
+          "nav",
+          { className: "settings-tabs" },
+          tabButton("timer", "计时器", tab, setTab),
+          tabButton("calendar", "日历", tab, setTab),
+          tabButton("monitor", "监听", tab, setTab),
+          tabButton("about", "关于", tab, setTab)
         ),
         h(
-          "div",
-          { className: "settings-body" },
-          h(
-            "nav",
-            { className: "settings-tabs" },
-            tabButton("timer", "计时器", tab, setTab),
-            tabButton("calendar", "日历", tab, setTab),
-            tabButton("monitor", "监听", tab, setTab),
-            tabButton("about", "关于", tab, setTab)
-          ),
-          h(
-            "section",
-            { className: "settings-content" },
+          "section",
+          { className: "settings-content" },
             tab === "timer" &&
               h(
                 React.Fragment,
@@ -568,15 +668,22 @@
                 ),
                 h("button", { className: "control primary", onClick: () => (window.location.href = "/dashboard") }, "打开 Dashboard")
               )
-          )
-        ),
-        h(
-          "footer",
-          { className: "modal-footer" },
-          h("button", { className: "control secondary", onClick: onClose }, "关闭"),
-          h("button", { className: "control primary", onClick: saveSettings, disabled: saving }, saving ? "保存中" : "保存设置")
         )
+      ),
+      h(
+        "footer",
+        { className: "modal-footer" },
+        h("button", { className: "control secondary", onClick: onClose }, "关闭"),
+        h("button", { className: "control primary", onClick: saveSettings, disabled: saving }, saving ? "保存中" : "保存设置")
       )
+    );
+
+    if (standalone) return settingsPanel;
+
+    return h(
+      "div",
+      { className: "modal-backdrop", role: "presentation", onMouseDown: (e) => e.target === e.currentTarget && onClose() },
+      settingsPanel
     );
   }
 
