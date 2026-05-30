@@ -110,3 +110,5 @@ tmp/
 temp/
 *.tmp
 *.temp
+docs/*
+extensions/chrome.crx
