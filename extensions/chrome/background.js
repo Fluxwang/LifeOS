@@ -41,6 +41,14 @@ function updateDynamicRules(options) {
   return promisifyChrome(api.updateDynamicRules, api, options);
 }
 
+function getDynamicRules() {
+  const api = getRuntime().declarativeNetRequest;
+  if (api.getDynamicRules.length === 0) {
+    return api.getDynamicRules();
+  }
+  return promisifyChrome(api.getDynamicRules, api);
+}
+
 async function getStoredRules() {
   try {
     const data = await storageGet({ [STORAGE_KEY]: [] });
@@ -53,6 +61,48 @@ async function getStoredRules() {
 
 async function setStoredRules(rules) {
   await storageSet({ [STORAGE_KEY]: rules });
+}
+
+function normalizeStoredRules(rules) {
+  const maxExistingId = rules.reduce((maxId, rule) => {
+    const id = Number(rule && rule.id);
+    return Number.isInteger(id) && id > 0 ? Math.max(maxId, id) : maxId;
+  }, 0);
+  const usedIds = new Set();
+  let nextId = maxExistingId;
+
+  return rules.map((rule) => {
+    let id = Number(rule && rule.id);
+    if (!Number.isInteger(id) || id <= 0 || usedIds.has(id)) {
+      do {
+        nextId += 1;
+      } while (usedIds.has(nextId));
+      id = nextId;
+    }
+    usedIds.add(id);
+    return { ...rule, id };
+  });
+}
+
+async function loadNormalizedRules() {
+  const rules = await getStoredRules();
+  const normalized = normalizeStoredRules(rules);
+  if (JSON.stringify(rules) !== JSON.stringify(normalized)) {
+    await setStoredRules(normalized);
+  }
+  return normalized;
+}
+
+function nextRuleId(rules) {
+  return rules.reduce((maxId, rule) => Math.max(maxId, Number(rule.id) || 0), 0) + 1;
+}
+
+async function syncDynamicRules(rules) {
+  const dynamicRules = await getDynamicRules();
+  await updateDynamicRules({
+    removeRuleIds: dynamicRules.map((rule) => rule.id),
+    addRules: rules.map(buildDnrRule)
+  });
 }
 
 function normalizeHostname(url) {
@@ -114,7 +164,7 @@ async function checkUrl(url) {
     return { blocked: false, ruleId: null };
   }
 
-  const rules = await getStoredRules();
+  const rules = await loadNormalizedRules();
   const matchedRule = rules.find((rule) => patternMatchesHostname(rule.pattern, hostname));
   return {
     blocked: Boolean(matchedRule),
@@ -132,25 +182,24 @@ async function addRule({ pattern, displayName }) {
     throw new Error("Invalid rule pattern.");
   }
 
-  const rules = await getStoredRules();
+  const rules = await loadNormalizedRules();
   const duplicate = rules.find((rule) => rule.pattern === pattern);
   if (duplicate) {
+    await syncDynamicRules(rules);
     return { rule: duplicate };
   }
 
-  const id = rules.reduce((maxId, rule) => Math.max(maxId, rule.id), 0) + 1;
+  const id = nextRuleId(rules);
   const rule = {
     id,
     pattern,
     displayName,
     addedAt: Math.floor(Date.now() / 1000)
   };
+  const nextRules = [...rules, rule];
 
-  await updateDynamicRules({
-    removeRuleIds: [],
-    addRules: [buildDnrRule(rule)]
-  });
-  await setStoredRules([...rules, rule]);
+  await syncDynamicRules(nextRules);
+  await setStoredRules(nextRules);
   return { rule };
 }
 
@@ -160,12 +209,10 @@ async function removeRule({ id }) {
     throw new Error("Invalid rule id.");
   }
 
-  const rules = await getStoredRules();
-  await updateDynamicRules({
-    removeRuleIds: [numericId],
-    addRules: []
-  });
-  await setStoredRules(rules.filter((rule) => rule.id !== numericId));
+  const rules = await loadNormalizedRules();
+  const nextRules = rules.filter((rule) => rule.id !== numericId);
+  await syncDynamicRules(nextRules);
+  await setStoredRules(nextRules);
   return { success: true };
 }
 
@@ -178,7 +225,7 @@ async function handleMessage(message) {
     case "removeRule":
       return removeRule(message);
     case "getRules":
-      return { blockedRules: await getStoredRules() };
+      return { rules: await loadNormalizedRules() };
     default:
       throw new Error("Unknown action.");
   }

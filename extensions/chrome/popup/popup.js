@@ -1,200 +1,149 @@
-const browserApi = typeof browser !== "undefined" ? browser : chrome;
-
-const state = {
-  tabId: null,
-  url: null,
-  hostname: null,
-  rootDomain: null,
-  blockedRuleId: null
-};
-
-const elements = {
-  mainView: document.querySelector("#main-view"),
-  confirmView: document.querySelector("#confirm-view"),
-  currentSite: document.querySelector("#current-site"),
-  statusText: document.querySelector("#status-text"),
-  message: document.querySelector("#message"),
-  blockButton: document.querySelector("#block-button"),
-  unblockButton: document.querySelector("#unblock-button"),
-  manageButton: document.querySelector("#manage-button"),
-  confirmSite: document.querySelector("#confirm-site"),
-  rootChoiceTitle: document.querySelector("#root-choice-title"),
-  rootChoiceHelp: document.querySelector("#root-choice-help"),
-  exactChoiceTitle: document.querySelector("#exact-choice-title"),
-  confirmError: document.querySelector("#confirm-error"),
-  cancelButton: document.querySelector("#cancel-button"),
-  confirmButton: document.querySelector("#confirm-button")
-};
-
-function sendMessage(message) {
-  return browserApi.runtime.sendMessage(message);
-}
-
-function getCurrentTab() {
-  return new Promise((resolve, reject) => {
-    browserApi.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      const error = browserApi.runtime.lastError;
-      if (error) {
-        reject(new Error(error.message));
-        return;
-      }
-      resolve(tabs[0] || null);
-    });
-  });
-}
-
-function parseHttpUrl(url) {
-  try {
-    const parsed = new URL(url);
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-      return null;
-    }
-    return parsed;
-  } catch (error) {
-    return null;
-  }
-}
-
-function getRootDomain(hostname) {
-  const parts = hostname.split(".").filter(Boolean);
-  if (parts.length <= 2) {
-    return hostname;
-  }
-  return parts.slice(-2).join(".");
-}
-
-function setMessage(text, isError = false) {
-  elements.message.hidden = !text;
-  elements.message.textContent = text || "";
-  elements.message.classList.toggle("error", isError);
-}
-
-function setConfirmError(text) {
-  elements.confirmError.hidden = !text;
-  elements.confirmError.textContent = text || "";
-}
-
-function showMainView() {
-  elements.mainView.hidden = false;
-  elements.confirmView.hidden = true;
-  setConfirmError("");
-}
-
-function showConfirmView() {
-  elements.mainView.hidden = true;
-  elements.confirmView.hidden = false;
-}
-
-function renderUnavailable(label) {
-  elements.currentSite.textContent = label;
-  elements.statusText.textContent = "无法屏蔽";
-  elements.statusText.classList.remove("blocked");
-  elements.blockButton.hidden = false;
-  elements.blockButton.disabled = true;
-  elements.unblockButton.hidden = true;
-  setMessage("无法屏蔽此页面");
-}
-
-function renderMainStatus(blocked) {
-  elements.currentSite.textContent = state.hostname;
-  elements.statusText.textContent = blocked ? "已屏蔽" : "未屏蔽";
-  elements.statusText.classList.toggle("blocked", blocked);
-  elements.blockButton.hidden = blocked;
-  elements.blockButton.disabled = blocked;
-  elements.unblockButton.hidden = !blocked;
-  setMessage("");
-}
-
-function renderConfirmChoices() {
-  elements.confirmSite.textContent = state.hostname;
-  elements.rootChoiceTitle.textContent = `屏蔽整个 ${state.rootDomain}`;
-  elements.rootChoiceHelp.textContent = `含 ${state.rootDomain} 的所有子域`;
-  elements.exactChoiceTitle.textContent = `仅屏蔽 ${state.hostname}`;
-}
-
-function selectedRulePayload() {
-  const selected = document.querySelector("input[name='scope']:checked").value;
-  if (selected === "root") {
-    return {
-      pattern: `*.${state.rootDomain}`,
-      displayName: `${state.rootDomain}（含所有子域）`
-    };
-  }
-  return {
-    pattern: state.hostname,
-    displayName: state.hostname
+// Mock chrome shim — only active outside a real extension environment
+(function(){
+  var real = (typeof chrome!=='undefined' && chrome.runtime && chrome.runtime.id);
+  if(real) return;
+  var KEY='blockade.rules';
+  function load(){try{return JSON.parse(localStorage.getItem(KEY))}catch(e){return null}}
+  function seed(){var r=[
+    {id:1,pattern:'*.youtube.com',displayName:'youtube.com（含所有子域）',addedAt:1748563200},
+    {id:2,pattern:'www.reddit.com',displayName:'www.reddit.com',addedAt:1748390400},
+    {id:3,pattern:'*.twitter.com',displayName:'twitter.com（含所有子域）',addedAt:1748476800}
+  ];localStorage.setItem(KEY,JSON.stringify(r));return r;}
+  var rules=load()||seed();
+  function save(){localStorage.setItem(KEY,JSON.stringify(rules));}
+  function host(u){try{return new URL(u).hostname}catch(e){return ''}}
+  function match(rl,h){if(rl.pattern.indexOf('*.')===0){var b=rl.pattern.slice(2);return h===b||h.slice(-(b.length+1))==='.'+b;}return h===rl.pattern;}
+  window.chrome={
+    runtime:{
+      sendMessage:function(msg,cb){
+        var res;
+        if(msg.action==='checkUrl'){var h=host(msg.url),hit=rules.filter(function(r){return match(r,h)})[0];res={ok:true,blocked:!!hit,ruleId:hit?hit.id:null};}
+        else if(msg.action==='addRule'){var id=rules.reduce(function(m,r){return Math.max(m,r.id)},0)+1;rules.push({id:id,pattern:msg.pattern,displayName:msg.displayName,addedAt:Math.floor(Date.now()/1000)});save();res={ok:true,id:id};}
+        else if(msg.action==='removeRule'){rules=rules.filter(function(r){return r.id!==msg.id});save();res={ok:true};}
+        else if(msg.action==='getRules'){res={ok:true,rules:rules.slice()};}
+        setTimeout(function(){cb&&cb(res)},70);
+      },
+      openOptionsPage:function(){window.open('../options/options.html','_blank')}
+    },
+    tabs:{query:function(q,cb){cb([{url:window.__mockUrl||'https://www.youtube.com/watch?v=dQw4',id:1}])}}
   };
-}
+})();
 
-async function initialize() {
-  try {
-    const tab = await getCurrentTab();
-    state.tabId = tab ? tab.id : null;
-    state.url = tab ? tab.url : null;
+// Popup logic
+(function(){
+  var IN_EXT = (typeof chrome!=='undefined' && chrome.runtime && chrome.runtime.id);
+  var $=function(s){return document.getElementById(s)};
+  var state={url:'',host:'',base:'',ruleId:null,blocked:false,supported:true};
 
-    const parsed = parseHttpUrl(state.url);
-    if (!parsed) {
-      renderUnavailable(state.url || "当前页面");
+  function baseDomain(h){var p=h.split('.');return p.length<=2?h:p.slice(-2).join('.');}
+
+  function send(msg){return new Promise(function(res){chrome.runtime.sendMessage(msg,function(r){
+    var err=chrome.runtime.lastError;
+    if(err){res({ok:false,error:err.message||String(err)});return;}
+    res(r||{});
+  })});}
+
+  function renderStatus(){
+    var st=$('status'),txt=$('status-text'),btn=$('primary-btn');
+    st.classList.remove('is-blocked','is-allowed');
+    if(!state.supported){
+      $('cannot').hidden=false;
+      st.hidden=true; btn.disabled=true; btn.textContent='屏蔽此网站';
       return;
     }
-
-    state.hostname = parsed.hostname.toLowerCase();
-    state.rootDomain = getRootDomain(state.hostname);
-    renderConfirmChoices();
-
-    const response = await sendMessage({ action: "checkUrl", url: state.url });
-    if (!response || !response.ok) {
-      throw new Error(response && response.error ? response.error : "读取状态失败");
+    $('cannot').hidden=true; st.hidden=false; btn.disabled=false;
+    if(state.blocked){
+      st.classList.add('is-blocked'); txt.textContent='已屏蔽 · BLOCKED';
+      btn.textContent='解除屏蔽'; btn.className='btn btn-danger'; btn.dataset.act='unblock';
+    }else{
+      st.classList.add('is-allowed'); txt.textContent='未屏蔽 · ALLOWED';
+      btn.textContent='屏蔽此网站'; btn.className='btn btn-primary'; btn.dataset.act='block';
     }
-    state.blockedRuleId = response.ruleId;
-    renderMainStatus(response.blocked);
-  } catch (error) {
-    renderUnavailable("当前页面");
-    setMessage(error.message || "读取状态失败", true);
   }
-}
 
-elements.blockButton.addEventListener("click", () => {
-  renderConfirmChoices();
-  showConfirmView();
-});
+  function showView(v){
+    $('view-main').hidden = v!=='main';
+    $('view-confirm').hidden = v!=='confirm';
+  }
 
-elements.cancelButton.addEventListener("click", showMainView);
+  function setMainError(t){
+    $('main-err').textContent=t||'';
+    $('main-err').hidden=!t;
+  }
 
-elements.confirmButton.addEventListener("click", async () => {
-  elements.confirmButton.disabled = true;
-  setConfirmError("");
-  try {
-    const response = await sendMessage({
-      action: "addRule",
-      ...selectedRulePayload()
+  function toast(t){
+    if(IN_EXT)return;
+    var el=$('toast');el.textContent=t;el.classList.add('show');
+    setTimeout(function(){el.classList.remove('show')},1400);
+  }
+  function done(t){
+    if(IN_EXT){window.close();return;}
+    toast(t);
+    refresh();
+  }
+
+  function refresh(){
+    send({action:'checkUrl',url:state.url}).then(function(r){
+      state.blocked=!!r.blocked; state.ruleId=r.ruleId; renderStatus();
     });
-    if (!response || !response.ok) {
-      throw new Error(response && response.error ? response.error : "写入规则失败");
-    }
-    window.close();
-  } catch (error) {
-    setConfirmError(error.message || "写入规则失败");
-    elements.confirmButton.disabled = false;
+    send({action:'getRules'}).then(function(r){
+      $('count').textContent=(r.rules||[]).length;
+    });
   }
-});
 
-elements.unblockButton.addEventListener("click", async () => {
-  elements.unblockButton.disabled = true;
-  try {
-    const response = await sendMessage({ action: "removeRule", id: state.blockedRuleId });
-    if (!response || !response.ok) {
-      throw new Error(response && response.error ? response.error : "删除规则失败");
-    }
-    window.close();
-  } catch (error) {
-    setMessage(error.message || "删除规则失败", true);
-    elements.unblockButton.disabled = false;
+  function init(){
+    chrome.tabs.query({active:true,currentWindow:true},function(tabs){
+      var tab=(tabs&&tabs[0])||{};
+      state.url=tab.url||'';
+      var ok=/^https?:\/\//i.test(state.url);
+      state.supported=ok;
+      if(ok){
+        state.host=new URL(state.url).hostname;
+        state.base=baseDomain(state.host);
+        $('domain').textContent=state.host;
+        $('fav').textContent=(state.base[0]||'?');
+        $('root-dom').textContent=state.base;
+        $('exact-dom').textContent=state.host;
+      }else{
+        $('domain').textContent=state.url.split('/')[0]||'chrome://';
+        $('fav').textContent='—';
+      }
+      renderStatus(); refresh();
+    });
   }
-});
 
-elements.manageButton.addEventListener("click", () => {
-  browserApi.runtime.openOptionsPage();
-});
+  $('primary-btn').addEventListener('click',function(){
+    if($('primary-btn').dataset.act==='unblock'){
+      var btn=$('primary-btn');
+      btn.disabled=true;
+      setMainError('');
+      send({action:'removeRule',id:state.ruleId}).then(function(r){
+        if(r&&r.ok){
+          done('已解除屏蔽 · UNBLOCKED');
+        }else{
+          setMainError('解除屏蔽失败 · '+((r&&r.error)||'DNR error'));
+          btn.disabled=false;
+        }
+      });
+    }else{
+      setMainError('');$('err').hidden=true; showView('confirm');
+    }
+  });
+  $('cancel').addEventListener('click',function(){showView('main');});
+  $('confirm').addEventListener('click',function(){
+    var scope=document.querySelector('input[name=scope]:checked').value;
+    var pattern,display;
+    if(scope==='root'){pattern='*.'+state.base;display=state.base+'（含所有子域）';}
+    else{pattern=state.host;display=state.host;}
+    send({action:'addRule',pattern:pattern,displayName:display}).then(function(r){
+      if(r&&r.ok){showView('main');done('已加入屏蔽 · BLOCKED');}
+      else{$('err').textContent='写入规则失败 · '+((r&&r.error)||'DNR error');$('err').hidden=false;}
+    });
+  });
+  $('manage').addEventListener('click',function(){
+    if(IN_EXT&&chrome.runtime.openOptionsPage){chrome.runtime.openOptionsPage();}
+    else{chrome.runtime.openOptionsPage&&chrome.runtime.openOptionsPage();}
+  });
 
-initialize();
+  init();
+})();

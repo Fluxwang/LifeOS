@@ -1,63 +1,242 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>LifeOS Site Blocker</title>
-    <link rel="stylesheet" href="popup.css">
-  </head>
-  <body>
-    <main class="popup-shell">
-      <section id="main-view">
-        <header class="header">
-          <span class="label">当前网站</span>
-          <strong id="current-site">读取中...</strong>
-        </header>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BLOCKADE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme: light dark;
+  --bg:#ffffff; --bg-sunken:#f3f4f6; --surface:#ffffff; --surface-2:#f7f8fa;
+  --border:#e6e8ec; --border-strong:#d4d8de;
+  --text:#0b0d12; --muted:#656b76; --faint:#9aa0aa;
+  --accent:#2f6df6; --accent-ink:#ffffff; --accent-soft:#eaf1fe;
+  --danger:#e5484d; --danger-ink:#ffffff; --danger-soft:#fdecec;
+  --ok:#1f9d57;
+  --mono:"Geist Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  --sans:"Geist",-apple-system,system-ui,"Segoe UI",sans-serif;
+  --shadow:0 1px 2px rgba(10,13,18,.05),0 10px 28px rgba(10,13,18,.10);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0b0c0f; --bg-sunken:#070809; --surface:#141519; --surface-2:#1a1c21;
+    --border:#25272e; --border-strong:#33363f;
+    --text:#f1f2f4; --muted:#9097a1; --faint:#5d636d;
+    --accent:#4d8bff; --accent-ink:#06101f; --accent-soft:#15263f;
+    --danger:#ff5c61; --danger-ink:#1a0608; --danger-soft:#2a1416;
+    --ok:#3ad07e;
+    --shadow:0 1px 2px rgba(0,0,0,.5),0 14px 34px rgba(0,0,0,.55);
+  }
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:360px}
+body{
+  font-family:var(--sans); background:var(--bg); color:var(--text);
+  -webkit-font-smoothing:antialiased; font-size:14px; line-height:1.4;
+}
+.app{display:flex;flex-direction:column}
 
-        <div class="status-row">
-          <span>状态</span>
-          <span id="status-text" class="status">读取中</span>
-        </div>
+/* header */
+.bar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:11px 14px; border-bottom:1px solid var(--border);
+  background:var(--surface);
+}
+.brand{display:flex;align-items:center;gap:8px}
+.mark{width:20px;height:20px;display:block}
+.word{
+  font-family:var(--mono);font-weight:600;font-size:12px;letter-spacing:.16em;
+  color:var(--text);
+}
+.ver{font-family:var(--mono);font-size:10px;letter-spacing:.08em;color:var(--faint)}
 
-        <p id="message" class="message" hidden></p>
+/* views */
+.view{padding:16px 14px 14px}
+.lbl{
+  font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--faint);margin-bottom:9px;
+}
 
-        <button id="block-button" class="primary-button" type="button" disabled>屏蔽此网站</button>
-        <button id="unblock-button" class="danger-button" type="button" hidden>解除屏蔽</button>
+/* current site */
+.site{display:flex;align-items:center;gap:11px;margin-bottom:14px}
+.fav{
+  width:40px;height:40px;flex:0 0 40px;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-weight:600;font-size:18px;
+  background:var(--surface-2);border:1px solid var(--border);color:var(--muted);
+  text-transform:uppercase;
+}
+.site-meta{min-width:0}
+.domain{
+  font-family:var(--mono);font-size:16px;font-weight:600;color:var(--text);
+  letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
 
-        <button id="manage-button" class="link-button" type="button">管理屏蔽列表 →</button>
-      </section>
+/* status */
+.status{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:5px 10px;border-radius:999px;margin-bottom:14px;
+  font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.04em;
+  border:1px solid var(--border);background:var(--surface-2);color:var(--muted);
+}
+.status .dot{width:7px;height:7px;border-radius:50%;background:var(--muted)}
+.status.is-blocked{color:var(--danger);background:var(--danger-soft);border-color:transparent}
+.status.is-blocked .dot{background:var(--danger);box-shadow:0 0 0 3px color-mix(in srgb,var(--danger) 22%,transparent)}
+.status.is-allowed .dot{background:var(--ok)}
 
-      <section id="confirm-view" hidden>
-        <header class="header">
-          <span class="label">确认屏蔽</span>
-          <strong id="confirm-site">当前网站</strong>
-        </header>
+/* buttons */
+.btn{
+  width:100%;height:40px;border-radius:9px;border:1px solid transparent;
+  font-family:var(--sans);font-size:14px;font-weight:600;cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  transition:transform .05s ease, background .12s ease, box-shadow .12s ease;
+}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:var(--accent);color:var(--accent-ink);box-shadow:0 1px 0 color-mix(in srgb,var(--accent) 60%,#000)}
+.btn-primary:hover{background:color-mix(in srgb,var(--accent) 90%,#000)}
+.btn-danger{background:var(--danger);color:var(--danger-ink)}
+.btn-danger:hover{background:color-mix(in srgb,var(--danger) 90%,#000)}
+.btn-ghost{background:var(--surface-2);color:var(--text);border-color:var(--border-strong)}
+.btn-ghost:hover{background:var(--bg-sunken)}
+.btn[disabled]{opacity:.5;cursor:not-allowed;transform:none}
 
-        <fieldset class="choice-group">
-          <label class="choice">
-            <input id="root-choice" type="radio" name="scope" value="root" checked>
-            <span>
-              <strong id="root-choice-title">屏蔽整个根域</strong>
-              <small id="root-choice-help">含所有子域</small>
-            </span>
-          </label>
-          <label class="choice">
-            <input id="exact-choice" type="radio" name="scope" value="exact">
-            <span>
-              <strong id="exact-choice-title">仅屏蔽当前域名</strong>
-              <small>不影响其他子域</small>
-            </span>
-          </label>
-        </fieldset>
+.note{
+  margin-top:10px;text-align:center;font-family:var(--mono);font-size:11px;
+  color:var(--faint);letter-spacing:.02em;
+}
 
-        <p id="confirm-error" class="message error" hidden></p>
+/* divider + manage link */
+.rule{height:1px;background:var(--border);margin:14px -14px 0}
+.link{
+  width:100%;display:flex;align-items:center;gap:8px;
+  padding:12px 14px 2px;background:none;border:none;cursor:pointer;
+  font-family:var(--sans);font-size:13px;font-weight:500;color:var(--muted);
+}
+.link:hover{color:var(--text)}
+.link .count{
+  font-family:var(--mono);font-size:11px;font-weight:600;padding:1px 7px;border-radius:999px;
+  background:var(--surface-2);border:1px solid var(--border);color:var(--muted);
+}
+.link .arr{margin-left:auto;transition:transform .12s ease}
+.link:hover .arr{transform:translateX(3px)}
 
-        <div class="button-row">
-          <button id="cancel-button" class="secondary-button" type="button">取消</button>
-          <button id="confirm-button" class="primary-button" type="button">确认屏蔽</button>
-        </div>
-      </section>
-    </main>
-    <script src="popup.js"></script>
-  </body>
+/* confirm choices */
+.choices{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+.choice{
+  display:flex;align-items:center;gap:11px;padding:12px;cursor:pointer;
+  border:1px solid var(--border-strong);border-radius:10px;background:var(--surface);
+  transition:border-color .12s,background .12s;
+}
+.choice:hover{border-color:var(--muted)}
+.choice:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+.choice input{position:absolute;opacity:0;pointer-events:none}
+.radio{
+  width:18px;height:18px;flex:0 0 18px;border-radius:50%;
+  border:2px solid var(--border-strong);position:relative;transition:border-color .12s;
+}
+.choice:has(input:checked) .radio{border-color:var(--accent)}
+.choice:has(input:checked) .radio::after{
+  content:"";position:absolute;inset:3px;border-radius:50%;background:var(--accent);
+}
+.choice-body{min-width:0;flex:1}
+.choice-title{font-size:13.5px;font-weight:500;color:var(--text)}
+.choice-title b{font-family:var(--mono);font-weight:600}
+.choice-sub{font-size:11.5px;color:var(--muted);margin-top:2px;font-family:var(--mono);letter-spacing:.01em}
+.tag{
+  font-family:var(--mono);font-size:9.5px;font-weight:600;letter-spacing:.1em;
+  padding:3px 6px;border-radius:5px;background:var(--surface-2);
+  border:1px solid var(--border);color:var(--muted);align-self:flex-start;
+}
+.choice:has(input:checked) .tag{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+
+.err{
+  font-family:var(--mono);font-size:11px;color:var(--danger);background:var(--danger-soft);
+  padding:8px 10px;border-radius:7px;margin-bottom:10px;letter-spacing:.01em;
+}
+.row{display:grid;grid-template-columns:1fr 1.4fr;gap:8px}
+
+/* toast (preview only) */
+.toast{
+  position:fixed;left:50%;bottom:14px;transform:translateX(-50%) translateY(20px);
+  background:var(--text);color:var(--bg);font-family:var(--mono);font-size:11px;
+  padding:8px 12px;border-radius:8px;opacity:0;transition:all .2s ease;pointer-events:none;
+  letter-spacing:.02em;white-space:nowrap;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="bar">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="12" cy="12" r="9" stroke="var(--accent)" stroke-width="2.4"/>
+        <line x1="5.6" y1="5.6" x2="18.4" y2="18.4" stroke="var(--accent)" stroke-width="2.4"/>
+      </svg>
+      <span class="word">BLOCKADE</span>
+    </div>
+    <span class="ver">v1.0</span>
+  </header>
+
+  <!-- ===== MAIN VIEW ===== -->
+  <section id="view-main" class="view">
+    <div class="lbl">当前网站 · Current Site</div>
+    <div class="site">
+      <div class="fav" id="fav">Y</div>
+      <div class="site-meta">
+        <div class="domain" id="domain">www.youtube.com</div>
+      </div>
+    </div>
+
+    <div class="status is-allowed" id="status">
+      <span class="dot"></span><span id="status-text">未屏蔽 · ALLOWED</span>
+    </div>
+
+    <button class="btn btn-primary" id="primary-btn">屏蔽此网站</button>
+    <div class="note" id="cannot" hidden>⛌ 无法屏蔽此页面 · unsupported scheme</div>
+    <div class="err" id="main-err" hidden></div>
+
+    <div class="rule"></div>
+    <button class="link" id="manage">
+      管理屏蔽列表 <span class="count" id="count">0</span><span class="arr">→</span>
+    </button>
+  </section>
+
+  <!-- ===== CONFIRM VIEW ===== -->
+  <section id="view-confirm" class="view" hidden>
+    <div class="lbl">确认屏蔽 · Confirm Scope</div>
+    <div class="choices">
+      <label class="choice">
+        <input type="radio" name="scope" value="root" checked>
+        <span class="radio"></span>
+        <span class="choice-body">
+          <span class="choice-title">屏蔽整个 <b id="root-dom">youtube.com</b></span>
+          <span class="choice-sub">含 music · m · 等所有子域</span>
+        </span>
+        <span class="tag">ROOT</span>
+      </label>
+      <label class="choice">
+        <input type="radio" name="scope" value="exact">
+        <span class="radio"></span>
+        <span class="choice-body">
+          <span class="choice-title">仅屏蔽 <b id="exact-dom">www.youtube.com</b></span>
+          <span class="choice-sub">exact hostname match</span>
+        </span>
+        <span class="tag">EXACT</span>
+      </label>
+    </div>
+    <div class="err" id="err" hidden></div>
+    <div class="row">
+      <button class="btn btn-ghost" id="cancel">取消</button>
+      <button class="btn btn-primary" id="confirm">确认屏蔽</button>
+    </div>
+  </section>
+</div>
+<div class="toast" id="toast"></div>
+<script src="popup.js"></script>
+</body>
 </html>
