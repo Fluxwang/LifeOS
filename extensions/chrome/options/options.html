@@ -1,36 +1,175 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>屏蔽列表</title>
-    <link rel="stylesheet" href="options.css">
-  </head>
-  <body>
-    <main class="options-shell">
-      <header class="page-header">
-        <div>
-          <p>LifeOS Site Blocker</p>
-          <h1>屏蔽列表</h1>
-        </div>
-      </header>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>屏蔽列表 · BLOCKADE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme: light dark;
+  --bg:#f6f7f9; --surface:#ffffff; --surface-2:#f7f8fa;
+  --border:#e6e8ec; --border-strong:#d4d8de;
+  --text:#0b0d12; --muted:#656b76; --faint:#9aa0aa;
+  --accent:#2f6df6; --accent-ink:#ffffff; --accent-soft:#eaf1fe;
+  --danger:#e5484d; --danger-ink:#ffffff; --danger-soft:#fdecec;
+  --root:#7b5cff; --root-soft:#efeaff;
+  --exact:#1f9d57; --exact-soft:#e6f6ed;
+  --mono:"Geist Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  --sans:"Geist",-apple-system,system-ui,"Segoe UI",sans-serif;
+  --shadow:0 1px 2px rgba(10,13,18,.04),0 4px 16px rgba(10,13,18,.05);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#070809; --surface:#121317; --surface-2:#1a1c21;
+    --border:#24262d; --border-strong:#33363f;
+    --text:#f1f2f4; --muted:#9097a1; --faint:#5d636d;
+    --accent:#4d8bff; --accent-ink:#06101f; --accent-soft:#15263f;
+    --danger:#ff5c61; --danger-ink:#1a0608; --danger-soft:#2a1416;
+    --root:#a48bff; --root-soft:#221b3d;
+    --exact:#3ad07e; --exact-soft:#0f2a1c;
+    --shadow:0 1px 2px rgba(0,0,0,.5),0 8px 24px rgba(0,0,0,.4);
+  }
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:var(--sans);background:var(--bg);color:var(--text);
+  -webkit-font-smoothing:antialiased;min-height:100vh;padding:40px 24px 80px;
+}
+.wrap{max-width:760px;margin:0 auto}
 
-      <p id="error-message" class="message error" hidden></p>
-      <p id="empty-message" class="message" hidden>当前没有屏蔽任何网站。</p>
+/* header */
+.head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:6px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand .word{font-family:var(--mono);font-weight:600;font-size:13px;letter-spacing:.18em}
+h1{font-size:26px;font-weight:700;letter-spacing:-.02em;margin:18px 0 4px}
+.tagline{font-family:var(--mono);font-size:12.5px;color:var(--muted);letter-spacing:.01em}
+.stat{
+  text-align:right;flex:0 0 auto;border:1px solid var(--border);border-radius:12px;
+  background:var(--surface);padding:12px 16px;box-shadow:var(--shadow);
+}
+.stat .n{font-family:var(--mono);font-size:28px;font-weight:600;line-height:1;letter-spacing:-.02em}
+.stat .l{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-top:5px}
 
-      <section id="rules-list" class="rules-list" aria-live="polite"></section>
-    </main>
+/* toolbar */
+.toolbar{display:flex;align-items:center;gap:10px;margin:24px 0 14px}
+.search{
+  flex:1;display:flex;align-items:center;gap:9px;height:42px;padding:0 14px;
+  background:var(--surface);border:1px solid var(--border);border-radius:11px;
+  transition:border-color .12s,box-shadow .12s;
+}
+.search:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 16%,transparent)}
+.search svg{width:16px;height:16px;color:var(--faint);flex:0 0 auto}
+.search input{
+  border:none;background:none;outline:none;width:100%;color:var(--text);
+  font-family:var(--mono);font-size:13.5px;
+}
+.search input::placeholder{color:var(--faint)}
+.legend{display:flex;gap:6px}
+.lg{font-family:var(--mono);font-size:9.5px;font-weight:600;letter-spacing:.1em;padding:5px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:5px}
+.lg::before{content:"";width:6px;height:6px;border-radius:2px}
+.lg.root{color:var(--root);background:var(--root-soft)} .lg.root::before{background:var(--root)}
+.lg.exact{color:var(--exact);background:var(--exact-soft)} .lg.exact::before{background:var(--exact)}
 
-    <template id="rule-template">
-      <article class="rule-item">
-        <div>
-          <h2></h2>
-          <p></p>
-        </div>
-        <button type="button">删除</button>
-      </article>
-    </template>
+/* list */
+.list{display:flex;flex-direction:column;border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--surface);box-shadow:var(--shadow)}
+.item{
+  display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:14px;
+  padding:15px 18px;border-bottom:1px solid var(--border);transition:background .1s;
+}
+.item:last-child{border-bottom:none}
+.item:hover{background:var(--surface-2)}
+.fav{
+  width:34px;height:34px;flex:0 0 34px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-weight:600;font-size:15px;text-transform:uppercase;
+  background:var(--surface-2);border:1px solid var(--border);color:var(--muted);
+}
+.meta{min-width:0}
+.dname{font-family:var(--mono);font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pat{font-family:var(--mono);font-size:11.5px;color:var(--faint);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scope{
+  font-family:var(--mono);font-size:9.5px;font-weight:600;letter-spacing:.1em;
+  padding:4px 8px;border-radius:6px;white-space:nowrap;
+}
+.scope.root{color:var(--root);background:var(--root-soft)}
+.scope.exact{color:var(--exact);background:var(--exact-soft)}
+.added{font-family:var(--mono);font-size:11px;color:var(--faint);text-align:right;white-space:nowrap;display:none}
+@media(min-width:620px){.added{display:block}.item{grid-template-columns:auto 1fr auto auto auto}}
+.del{
+  width:34px;height:34px;border-radius:8px;border:1px solid var(--border);
+  background:var(--surface);color:var(--muted);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:all .12s;flex:0 0 auto;
+}
+.del:hover{background:var(--danger-soft);border-color:transparent;color:var(--danger)}
+.del svg{width:15px;height:15px}
 
-    <script src="options.js"></script>
-  </body>
+/* empty */
+.empty{
+  text-align:center;padding:64px 24px;border:1px dashed var(--border-strong);border-radius:14px;
+  background:var(--surface);
+}
+.empty .seal{width:54px;height:54px;margin:0 auto 16px;opacity:.5}
+.empty h2{font-size:17px;font-weight:600;margin-bottom:6px}
+.empty p{font-family:var(--mono);font-size:12.5px;color:var(--muted);line-height:1.6;max-width:340px;margin:0 auto}
+.empty code{background:var(--surface-2);border:1px solid var(--border);border-radius:5px;padding:1px 6px}
+
+.error{
+  margin:0 0 14px;padding:10px 12px;border-radius:9px;
+  background:var(--danger-soft);color:var(--danger);
+  font-family:var(--mono);font-size:12px;letter-spacing:.01em;
+}
+
+.foot{margin-top:22px;text-align:center;font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--faint);text-transform:uppercase}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <div>
+      <div class="brand">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" stroke="var(--accent)" stroke-width="2.4"/>
+          <line x1="5.6" y1="5.6" x2="18.4" y2="18.4" stroke="var(--accent)" stroke-width="2.4"/>
+        </svg>
+        <span class="word">BLOCKADE</span>
+      </div>
+      <h1>屏蔽列表 · Blocklist</h1>
+      <div class="tagline">stored locally · 仅存本机，不跨设备同步</div>
+    </div>
+    <div class="stat">
+      <div class="n" id="stat-count">0</div>
+      <div class="l">sites blocked</div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <label class="search">
+      <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="m20 20-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <input id="search" type="text" placeholder="搜索域名 / filter by domain…" autocomplete="off">
+    </label>
+    <div class="legend">
+      <span class="lg root">ROOT</span>
+      <span class="lg exact">EXACT</span>
+    </div>
+  </div>
+
+  <div class="error" id="error" hidden></div>
+  <div class="list" id="list"></div>
+
+  <div class="empty" id="empty" hidden>
+    <div class="seal">
+      <svg viewBox="0 0 96 96" fill="none"><circle cx="48" cy="48" r="40" stroke="var(--muted)" stroke-width="6"/><line x1="20" y1="20" x2="76" y2="76" stroke="var(--muted)" stroke-width="6" stroke-linecap="round"/></svg>
+    </div>
+    <h2>列表是空的</h2>
+    <p>访问任意网站，点击工具栏的 <code>BLOCKADE</code> 图标即可把它加进来。</p>
+  </div>
+
+  <div class="foot">remove a rule to lift the block · 删除即解除</div>
+</div>
+<script src="options.js"></script>
+</body>
 </html>
