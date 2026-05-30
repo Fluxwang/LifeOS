@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>LifeOS Site Blocker</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main class="popup-shell">
+      <section id="main-view">
+        <header class="header">
+          <span class="label">当前网站</span>
+          <strong id="current-site">读取中...</strong>
+        </header>
+
+        <div class="status-row">
+          <span>状态</span>
+          <span id="status-text" class="status">读取中</span>
+        </div>
+
+        <p id="message" class="message" hidden></p>
+
+        <button id="block-button" class="primary-button" type="button" disabled>屏蔽此网站</button>
+        <button id="unblock-button" class="danger-button" type="button" hidden>解除屏蔽</button>
+
+        <button id="manage-button" class="link-button" type="button">管理屏蔽列表 →</button>
+      </section>
+
+      <section id="confirm-view" hidden>
+        <header class="header">
+          <span class="label">确认屏蔽</span>
+          <strong id="confirm-site">当前网站</strong>
+        </header>
+
+        <fieldset class="choice-group">
+          <label class="choice">
+            <input id="root-choice" type="radio" name="scope" value="root" checked>
+            <span>
+              <strong id="root-choice-title">屏蔽整个根域</strong>
+              <small id="root-choice-help">含所有子域</small>
+            </span>
+          </label>
+          <label class="choice">
+            <input id="exact-choice" type="radio" name="scope" value="exact">
+            <span>
+              <strong id="exact-choice-title">仅屏蔽当前域名</strong>
+              <small>不影响其他子域</small>
+            </span>
+          </label>
+        </fieldset>
+
+        <p id="confirm-error" class="message error" hidden></p>
+
+        <div class="button-row">
+          <button id="cancel-button" class="secondary-button" type="button">取消</button>
+          <button id="confirm-button" class="primary-button" type="button">确认屏蔽</button>
+        </div>
+      </section>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>
