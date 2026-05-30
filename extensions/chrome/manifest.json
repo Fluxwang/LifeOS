@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "LifeOS Site Blocker",
+  "description": "Quickly block distracting websites on this device.",
+  "version": "0.1.0",
+  "permissions": [
+    "declarativeNetRequest",
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "LifeOS Site Blocker"
+  },
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": true
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "blocked/blocked.html"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ]
+}

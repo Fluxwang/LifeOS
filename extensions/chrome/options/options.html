@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>屏蔽列表</title>
+    <link rel="stylesheet" href="options.css">
+  </head>
+  <body>
+    <main class="options-shell">
+      <header class="page-header">
+        <div>
+          <p>LifeOS Site Blocker</p>
+          <h1>屏蔽列表</h1>
+        </div>
+      </header>
+
+      <p id="error-message" class="message error" hidden></p>
+      <p id="empty-message" class="message" hidden>当前没有屏蔽任何网站。</p>
+
+      <section id="rules-list" class="rules-list" aria-live="polite"></section>
+    </main>
+
+    <template id="rule-template">
+      <article class="rule-item">
+        <div>
+          <h2></h2>
+          <p></p>
+        </div>
+        <button type="button">删除</button>
+      </article>
+    </template>
+
+    <script src="options.js"></script>
+  </body>
+</html>
