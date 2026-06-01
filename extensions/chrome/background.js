@@ -172,6 +172,26 @@ async function checkUrl(url) {
   };
 }
 
+async function getPopupState(url) {
+  let hostname = null;
+  try {
+    hostname = normalizeHostname(url);
+  } catch (error) {
+    hostname = null;
+  }
+
+  const rules = await loadNormalizedRules();
+  const matchedRule = hostname
+    ? rules.find((rule) => patternMatchesHostname(rule.pattern, hostname))
+    : null;
+
+  return {
+    blocked: Boolean(matchedRule),
+    ruleId: matchedRule ? matchedRule.id : null,
+    ruleCount: rules.length
+  };
+}
+
 async function addRule({ pattern, displayName }) {
   if (!pattern || !displayName) {
     throw new Error("Missing rule pattern or display name.");
@@ -220,6 +240,8 @@ async function handleMessage(message) {
   switch (message && message.action) {
     case "checkUrl":
       return checkUrl(message.url);
+    case "getPopupState":
+      return getPopupState(message.url);
     case "addRule":
       return addRule(message);
     case "removeRule":
