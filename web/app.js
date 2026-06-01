@@ -589,7 +589,7 @@
         "header",
         { className: "modal-header" },
         h("div", null, h("h2", null, "设置"), h("p", null, "LifeOS Focus")),
-        h("button", { className: "icon-button", title: "关闭", onClick: onClose }, "×")
+        !standalone && h("button", { className: "icon-button", title: "关闭", onClick: onClose }, "×")
       ),
       h(
         "div",

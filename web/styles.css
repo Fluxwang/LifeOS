@@ -393,9 +393,12 @@ select {
 }
 
 .settings-window {
-  width: min(900px, calc(100vw - 36px));
-  height: min(760px, calc(100vh - 36px));
-  max-height: none;
+  width: 100vw;
+  height: 100vh;
+  max-height: 100vh;
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
 }
 
 .modal-header {
