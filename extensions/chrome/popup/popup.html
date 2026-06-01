@@ -4,10 +4,35 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BLOCKADE</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
+@font-face{
+  font-family:"Geist";font-style:normal;font-weight:400;font-display:swap;
+  src:url("../fonts/geist-400.ttf") format("truetype");
+}
+@font-face{
+  font-family:"Geist";font-style:normal;font-weight:500;font-display:swap;
+  src:url("../fonts/geist-500.ttf") format("truetype");
+}
+@font-face{
+  font-family:"Geist";font-style:normal;font-weight:600;font-display:swap;
+  src:url("../fonts/geist-600.ttf") format("truetype");
+}
+@font-face{
+  font-family:"Geist";font-style:normal;font-weight:700;font-display:swap;
+  src:url("../fonts/geist-700.ttf") format("truetype");
+}
+@font-face{
+  font-family:"Geist Mono";font-style:normal;font-weight:400;font-display:swap;
+  src:url("../fonts/geist-mono-400.ttf") format("truetype");
+}
+@font-face{
+  font-family:"Geist Mono";font-style:normal;font-weight:500;font-display:swap;
+  src:url("../fonts/geist-mono-500.ttf") format("truetype");
+}
+@font-face{
+  font-family:"Geist Mono";font-style:normal;font-weight:600;font-display:swap;
+  src:url("../fonts/geist-mono-600.ttf") format("truetype");
+}
 :root{
   color-scheme: light dark;
   --bg:#ffffff; --bg-sunken:#f3f4f6; --surface:#ffffff; --surface-2:#f7f8fa;
@@ -186,17 +211,17 @@ body{
   <section id="view-main" class="view">
     <div class="lbl">当前网站 · Current Site</div>
     <div class="site">
-      <div class="fav" id="fav">Y</div>
+      <div class="fav" id="fav">?</div>
       <div class="site-meta">
-        <div class="domain" id="domain">www.youtube.com</div>
+        <div class="domain" id="domain">读取当前标签页</div>
       </div>
     </div>
 
-    <div class="status is-allowed" id="status">
-      <span class="dot"></span><span id="status-text">未屏蔽 · ALLOWED</span>
+    <div class="status" id="status">
+      <span class="dot"></span><span id="status-text">读取中 · LOADING</span>
     </div>
 
-    <button class="btn btn-primary" id="primary-btn">屏蔽此网站</button>
+    <button class="btn btn-primary" id="primary-btn" disabled>读取中</button>
     <div class="note" id="cannot" hidden>⛌ 无法屏蔽此页面 · unsupported scheme</div>
     <div class="err" id="main-err" hidden></div>
 

@@ -18,6 +18,7 @@
       sendMessage:function(msg,cb){
         var res;
         if(msg.action==='checkUrl'){var h=host(msg.url),hit=rules.filter(function(r){return match(r,h)})[0];res={ok:true,blocked:!!hit,ruleId:hit?hit.id:null};}
+        else if(msg.action==='getPopupState'){var h2=host(msg.url),hit2=rules.filter(function(r){return match(r,h2)})[0];res={ok:true,blocked:!!hit2,ruleId:hit2?hit2.id:null,ruleCount:rules.length};}
         else if(msg.action==='addRule'){var id=rules.reduce(function(m,r){return Math.max(m,r.id)},0)+1;rules.push({id:id,pattern:msg.pattern,displayName:msg.displayName,addedAt:Math.floor(Date.now()/1000)});save();res={ok:true,id:id};}
         else if(msg.action==='removeRule'){rules=rules.filter(function(r){return r.id!==msg.id});save();res={ok:true};}
         else if(msg.action==='getRules'){res={ok:true,rules:rules.slice()};}
@@ -33,7 +34,7 @@
 (function(){
   var IN_EXT = (typeof chrome!=='undefined' && chrome.runtime && chrome.runtime.id);
   var $=function(s){return document.getElementById(s)};
-  var state={url:'',host:'',base:'',ruleId:null,blocked:false,supported:true};
+  var state={url:'',host:'',base:'',ruleId:null,blocked:false,supported:true,ready:false,checking:true};
 
   function baseDomain(h){var p=h.split('.');return p.length<=2?h:p.slice(-2).join('.');}
 
@@ -46,12 +47,23 @@
   function renderStatus(){
     var st=$('status'),txt=$('status-text'),btn=$('primary-btn');
     st.classList.remove('is-blocked','is-allowed');
+    if(!state.ready){
+      $('cannot').hidden=true;
+      st.hidden=false; btn.disabled=true; btn.textContent='读取中'; btn.className='btn btn-primary';
+      txt.textContent='读取中 · LOADING';
+      return;
+    }
     if(!state.supported){
       $('cannot').hidden=false;
       st.hidden=true; btn.disabled=true; btn.textContent='屏蔽此网站';
       return;
     }
     $('cannot').hidden=true; st.hidden=false; btn.disabled=false;
+    if(state.checking){
+      txt.textContent='检查中 · CHECKING';
+      btn.disabled=true; btn.textContent='读取中'; btn.className='btn btn-primary'; btn.dataset.act='block';
+      return;
+    }
     if(state.blocked){
       st.classList.add('is-blocked'); txt.textContent='已屏蔽 · BLOCKED';
       btn.textContent='解除屏蔽'; btn.className='btn btn-danger'; btn.dataset.act='unblock';
@@ -83,11 +95,18 @@
   }
 
   function refresh(){
-    send({action:'checkUrl',url:state.url}).then(function(r){
-      state.blocked=!!r.blocked; state.ruleId=r.ruleId; renderStatus();
-    });
-    send({action:'getRules'}).then(function(r){
-      $('count').textContent=(r.rules||[]).length;
+    state.checking=true;
+    renderStatus();
+    send({action:'getPopupState',url:state.url}).then(function(r){
+      state.checking=false;
+      if(r&&r.ok){
+        state.blocked=!!r.blocked;
+        state.ruleId=r.ruleId;
+        $('count').textContent=String(r.ruleCount||0);
+      }else{
+        setMainError('读取状态失败 · '+((r&&r.error)||'runtime error'));
+      }
+      renderStatus();
     });
   }
 
@@ -97,6 +116,7 @@
       state.url=tab.url||'';
       var ok=/^https?:\/\//i.test(state.url);
       state.supported=ok;
+      state.ready=true;
       if(ok){
         state.host=new URL(state.url).hostname;
         state.base=baseDomain(state.host);
